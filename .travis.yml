@@ -1,4 +1,4 @@
 language: swift
 cache:
-	- bundler
-	- cocoapods
+- bundler
+- cocoapods

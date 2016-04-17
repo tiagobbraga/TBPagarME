@@ -1,6 +1,6 @@
 # TBPagarME
 
-[![CI Status](http://img.shields.io/travis/tiagobsbraga/TBPagarME.svg?style=flat)](https://travis-ci.org/tiagobsbraga/TBPagarME)
+[![CI Status](http://img.shields.io/travis/tiagobsbraga/TBPagarME.svg?style=flat&branch=master)](https://travis-ci.org/tiagobsbraga/TBPagarME)
 [![Version](https://img.shields.io/cocoapods/v/TBPagarME.svg?style=flat)](http://cocoapods.org/pods/TBPagarME)
 [![License](https://img.shields.io/cocoapods/l/TBPagarME.svg?style=flat)](http://cocoapods.org/pods/TBPagarME)
 [![Platform](https://img.shields.io/cocoapods/p/TBPagarME.svg?style=flat)](http://cocoapods.org/pods/TBPagarME)
