@@ -1,0 +1,4 @@
+language: swift
+cache:
+	- bundler
+	- cocoapods
