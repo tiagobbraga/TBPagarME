@@ -1,0 +1,6 @@
+framework module TBPagarME {
+  umbrella header "TBPagarME-umbrella.h"
+
+  export *
+  module * { export * }
+}
