@@ -1,0 +1,20 @@
+PODS:
+  - SwiftLuhn (0.1.0)
+  - SwiftyRSA (0.2.0)
+  - TBPagarME (1.2.0):
+    - SwiftLuhn (~> 0.1)
+    - SwiftyRSA (~> 0.2)
+
+DEPENDENCIES:
+  - TBPagarME (from `../TBPagarME.podspec`)
+
+EXTERNAL SOURCES:
+  TBPagarME:
+    :path: ../TBPagarME.podspec
+
+SPEC CHECKSUMS:
+  SwiftLuhn: 7e842bdc7c04139a77b8ecf2087e542db19b57e2
+  SwiftyRSA: 8e19e4ced7f217886370ea5cc8120db09b88f1a4
+  TBPagarME: b8ae087f88226b351034d883295a142a5bbabd8f
+
+COCOAPODS: 0.39.0
