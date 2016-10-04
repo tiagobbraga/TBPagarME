@@ -43,11 +43,20 @@ class ViewController: UIViewController {
         pagarME.customer.ddd = "031"
         pagarME.customer.number = "986932196"
         
+        //transaction
         TBPagarME.sharedInstance.transaction("1000", success: { (data) in
             print("data transaction \(data)")
         })
         { (message) in
             print("error message \(message)")
+        }
+        
+        //get card hash
+        TBPagarME.sharedInstance.generateCardHash(success: { (card_hash) in
+            debugPrint("card_hash: \(card_hash)")
+            
+        }) { (message) in
+            debugPrint("error: \(message)")
         }
     }
 
