@@ -26,7 +26,7 @@ Store initial keys
 
 ```swift
 // https://dashboard.pagar.me/#/myaccount/apikeys
-TBPagarME.storeKeys("api_key", encryptionKey: "credential_key")
+TBPagarME.storeKeys(apiKey: "api_key", encryptionKey: "credential_key")
 ```
 
 ### Transaction
