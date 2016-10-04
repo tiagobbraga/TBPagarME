@@ -6,13 +6,13 @@
 //
 
 import Foundation
-import SwiftLuhn
 import SwiftyRSA
 
-typealias SuccessCardHash = (card_hash: String) -> Void
+public typealias SuccessCardHash = (_ card_hash: String) -> Void
+public typealias FailureCardHash = (_ message: String) -> Void
 
-public typealias SuccessTransaction = (data: [String: AnyObject]) -> Void
-public typealias FailureTransaction = (message: String) -> Void
+public typealias SuccessTransaction = (_ data: [String: Any]) -> Void
+public typealias FailureTransaction = (_ message: String) -> Void
 
 public struct Card {
     public var cardNumber: String?
@@ -53,6 +53,34 @@ public struct Card {
         
         return nil
     }
+    
+    func luhnAlgorithm(cardNumber: String) -> Bool{
+        var luhn_sum = 0
+        var digit_count = 0
+        //reverse the card
+        for c in cardNumber.characters.reversed() {
+            //count digits
+            //print(c.self)
+            let this_digit = Int(String(c as Character))!
+            //print(this_digit)
+            digit_count += 1
+            //double every even digit
+            if digit_count % 2 == 0{
+                if this_digit * 2 > 9 {
+                    luhn_sum = luhn_sum + this_digit * 2 - 9
+                }else{
+                    luhn_sum = luhn_sum + this_digit * 2
+                }
+            }else{
+                luhn_sum = luhn_sum + this_digit
+            }
+            
+        }
+        if luhn_sum % 10 == 0{
+            return true
+        }
+        return false
+    }
 }
 
 public struct Customer {
@@ -69,14 +97,14 @@ public struct Customer {
     
     public init () { }
     
-    public func data() -> [String: AnyObject] {
-        var customer = [String: AnyObject]()
+    public func data() -> [String: Any] {
+        var customer = [String: Any]()
         
         customer["name"] = name
         customer["document_number"] = document_number
         customer["email"] = email
         
-        var address = [String: AnyObject]()
+        var address = [String: Any]()
         address["street"] = street
         address["neighborhood"] = neighborhood
         address["zipcode"] = zipcode
@@ -84,7 +112,7 @@ public struct Customer {
         address["complementary"] = complementary
         customer["address"] = address
         
-        var phone = [String: AnyObject]()
+        var phone = [String: Any]()
         phone["ddd"] = ddd
         phone["number"] = number
         customer["phone"] = phone
@@ -108,34 +136,44 @@ public class TBPagarME: NSObject {
     
     // MARK: Singleton
     public class var sharedInstance: TBPagarME {
+        
         struct Static {
-            static var instance: TBPagarME?
-            static var token: dispatch_once_t = 0
+            static let instance: TBPagarME = TBPagarME()
         }
-        
-        dispatch_once(&Static.token) { () -> Void in
-            Static.instance = TBPagarME()
-        }
-        
-        return Static.instance!
+        return Static.instance
     }
     
     // MARK: Public
     static public func storeKeys(apiKey: String, encryptionKey key: String) {
-        let userDefaults = NSUserDefaults.standardUserDefaults()
+        let userDefaults = UserDefaults.standard
         userDefaults.setValue(apiKey, forKeyPath: API_KEY)
         userDefaults.setValue(key, forKeyPath: ENCRYPTION_KEY)
     }
     
-    public func transaction(amount: String, success: SuccessTransaction, failure: FailureTransaction) {
+    public func generateCardHash(success: @escaping SuccessCardHash, failure: @escaping FailureCardHash) {
         if let message = self.card.check() {
-            failure(message: message)
+            failure(message)
             return
         }
         
-        self.generateNewPublicKey { (card_hash) in
-            
-            var params: [String: AnyObject] = [String: AnyObject]()
+        self.generateNewPublicKey(success: { (card_hash) in
+            success(card_hash)
+        }) { (message) in
+            failure(message)
+        }
+        
+        
+        return
+    }
+    
+    public func transaction(amount: String, success: @escaping SuccessTransaction, failure: @escaping FailureTransaction) {
+        if let message = self.card.check() {
+            failure(message)
+            return
+        }
+        
+        self.generateNewPublicKey(success: { (card_hash) in
+            var params: [String: Any] = [String: Any]()
             params["api_key"] = self.apiKey()
             params["amount"] = amount
             params["card_hash"] = card_hash
@@ -143,19 +181,25 @@ public class TBPagarME: NSObject {
             
             do {
                 let url = NSURL(string: String(format: "%@%@", TBPagarME.baseURL, TBPagarME.transactions))
-                let request = NSMutableURLRequest(URL: url!, cachePolicy: NSURLRequestCachePolicy.ReloadIgnoringLocalCacheData, timeoutInterval: 20.0)
+                let request = NSMutableURLRequest(url: url! as URL, cachePolicy: NSURLRequest.CachePolicy.reloadIgnoringLocalCacheData, timeoutInterval: 20.0)
                 request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
-                request.HTTPMethod = "POST"
-                request.HTTPBody = try NSJSONSerialization.dataWithJSONObject(params, options: NSJSONWritingOptions())
+                request.httpMethod = "POST"
+                request.httpBody = try JSONSerialization.data(withJSONObject: params, options: JSONSerialization.WritingOptions())
                 
-                let session = NSURLSession.sharedSession()
-                let dataTask = session.dataTaskWithRequest(request) { (data, response, error) in
+                let session = URLSession.shared
+                let dataTask = session.dataTask(with: request as URLRequest) { (data, response, error) in
                     do {
-                        let json = try NSJSONSerialization.JSONObjectWithData(data!, options: [])
-                        if let err = json["error"] as? [String: AnyObject] {
-                            failure(message: String(err.first))
-                        } else {
-                            success(data: json as! [String : AnyObject])
+                        let json = try JSONSerialization.jsonObject(with: data!, options: [])
+                        if let jsonDict = json as? [String : Any]
+                        {
+                            ////print("json: \(jsonDict)")
+                            ////print("err \(jsonDict["error"])")
+                            
+                            let _id = jsonDict["id"] as! Int
+                            let publicKeyPEM = jsonDict["public_key"] as! String
+                            let swiftRSA = try SwiftyRSA.encryptString(self.card.cardHash(), publicKeyPEM: publicKeyPEM)
+                            ////print(String(format: "Sucess: %@_%@", String(_id), swiftRSA))
+                            success(["transition": String(format: "%@_%@", String(_id), swiftRSA)])
                         }
                     } catch let err as NSError {
                         print(err.localizedDescription)
@@ -166,37 +210,50 @@ public class TBPagarME: NSObject {
             } catch let err as NSError {
                 print(err.localizedDescription)
             }
+        }) { (message) in
+            failure(message)
         }
     }
     
     // MARK: Private
-    private func generateNewPublicKey(success: SuccessCardHash) {
+    private func generateNewPublicKey(success: @escaping SuccessCardHash, failure: @escaping FailureCardHash) {
         let url = NSURL(string: String(format: "%@%@", TBPagarME.baseURL, String(format: TBPagarME.card_hash, self.encryptionKey())))
-        let request = NSMutableURLRequest(URL: url!, cachePolicy: NSURLRequestCachePolicy.ReloadIgnoringLocalCacheData, timeoutInterval: 10.0)
-        request.HTTPMethod = "GET"
+        let request = NSMutableURLRequest(url: url! as URL, cachePolicy: NSURLRequest.CachePolicy.reloadIgnoringLocalCacheData, timeoutInterval: 10.0)
+        request.httpMethod = "GET"
         
-        let session = NSURLSession.sharedSession()
-        let dataTask = session.dataTaskWithRequest(request) { (data, response, error) in
+        let session = URLSession.shared
+        let dataTask = session.dataTask(with: request as URLRequest) { (data, response, error) in
             if let _ = error {
-                print("error \(error)")
+                //print("error \(error)")
                 return;
             }
             
             do {
-                let json = try NSJSONSerialization.JSONObjectWithData(data!, options: [])
-                let err = json["error"] as? [String: AnyObject]
-                if let _ = err {
-                    print("err \(err)")
+                let json = try JSONSerialization.jsonObject(with: data!, options: [])
+                if let jsonDict = json as? [String : Any]
+                {
+                    //print("json: \(jsonDict)")
+                    //print("err: \(jsonDict["error"])")
+                    
+                    let _id = jsonDict["id"] as! Int
+                    let publicKeyPEM = jsonDict["public_key"] as! String
+                    let swiftRSA = try SwiftyRSA.encryptString(self.card.cardHash(), publicKeyPEM: publicKeyPEM)
+                    
+                    success(String(format: "%@_%@", String(_id), swiftRSA))
                 }
                 
-                let _id = json["id"] as! Int
-                let publicKeyPEM = json["public_key"] as! String
-                let swiftRSA = try SwiftyRSA.encryptString(self.card.cardHash(), publicKeyPEM: publicKeyPEM)
                 
-                success(card_hash: String(format: "%@_%@", String(_id), swiftRSA))
+                if let jsonErr = json as? [String : Any]
+                {
+                    let err = jsonErr["error"]
+                    if let _ = err {
+                        print("err \(err)")
+                    }
+                }
+                
                 
             } catch let err as NSError {
-                print(err.localizedDescription)
+                print("Error: \(err.localizedDescription)")
             }
         }
         
@@ -205,12 +262,12 @@ public class TBPagarME: NSObject {
     
     // MARK: Helper
     private func apiKey() -> String {
-        let userDefaults = NSUserDefaults.standardUserDefaults()
-        return userDefaults.valueForKey(TBPagarME.API_KEY) as! String
+        let userDefaults = UserDefaults.standard
+        return userDefaults.value(forKey: TBPagarME.API_KEY) as! String
     }
     
     private func encryptionKey() -> String {
-        let userDefaults = NSUserDefaults.standardUserDefaults()
-        return userDefaults.valueForKey(TBPagarME.ENCRYPTION_KEY) as! String
+        let userDefaults = UserDefaults.standard
+        return userDefaults.value(forKey: TBPagarME.ENCRYPTION_KEY) as! String
     }
 }

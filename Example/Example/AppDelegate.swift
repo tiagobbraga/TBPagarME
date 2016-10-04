@@ -18,7 +18,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(application: UIApplication, didFinishLaunchingWithOptions launchOptions: [NSObject: AnyObject]?) -> Bool {
         
         // Pay
-        TBPagarME.storeKeys("ak_test_jyqXxuvRPlnvuekr8c2bqH7SO7FmTo", encryptionKey: "ek_test_pqEdh3qHAaSaQk4NVt3jvfTI0taZjL")
+        TBPagarME.storeKeys(apiKey: "ak_test_jyqXxuvRPlnvuekr8c2bqH7SO7FmTo", encryptionKey: "ek_test_pqEdh3qHAaSaQk4NVt3jvfTI0taZjL")
         
         return true
     }

@@ -26,7 +26,7 @@ Store initial keys
 
 ```swift
 // https://dashboard.pagar.me/#/myaccount/apikeys
-TBPagarME.storeKeys("api_key", encryptionKey: "credential_key")
+TBPagarME.storeKeys(apiKey: "api_key", encryptionKey: "credential_key")
 ```
 
 ### Transaction
@@ -61,6 +61,15 @@ TBPagarME.sharedInstance.transaction("1000", success: { (data) in
 { (message) in
     print("error message \(message)")
 }
+
+//get card_hash
+TBPagarME.sharedInstance.generateCardHash(success: { (card_hash) in
+    debugPrint("card_hash: \(card_hash)")
+    
+}) { (message) in
+    debugPrint("error: \(message)")
+}
+
 ```
 
 ## Author
